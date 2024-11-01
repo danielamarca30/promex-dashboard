@@ -1,3 +1,5 @@
+"use client"
+
 import { FunctionComponent } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { signal } from '@preact/signals';
@@ -37,10 +39,10 @@ const mineralUnits = [
   "O.T.", // Onza Troy
   "L.F.", // Libra Fina
   "K.F.", // Kilogramo Fino
-  // "T.M.F.", // Tonelada Métrica Fina
-  // "T.C.S.", // Tonelada Corta Seca
-  // "T.L.S.", // Tonelada Larga Seca
-  // "T.M.S.", // Tonelada Métrica Seca
+  "T.M.F.", // Tonelada Métrica Fina
+  "T.C.S.", // Tonelada Corta Seca
+  "T.L.S.", // Tonelada Larga Seca
+  "T.M.S.", // Tonelada Métrica Seca
 ];
 
 // Styles
@@ -149,8 +151,8 @@ const styles = {
 
 // Components
 const ComunicadoForm: FunctionComponent<{
-  onSubmit: (data: Omit<Comunicado, 'id' | 'active' | 'usuarioId'>) => void;
-  initialData?: Comunicado;
+  onSubmit: (data: Omit<Comunicado, 'id' | 'active' | 'usuarioId'>) => void,
+  initialData?: Comunicado,
   onCancel: () => void
 }> = ({ onSubmit, initialData, onCancel }) => {
   const [formData, setFormData] = useState<Omit<Comunicado, 'id' | 'active' | 'usuarioId'>>(
@@ -197,8 +199,8 @@ const ComunicadoForm: FunctionComponent<{
 };
 
 const CotizacionForm: FunctionComponent<{
-  onSubmit: (data: Omit<Cotizacion, 'id' | 'active' | 'usuarioId' | 'fecha'>) => void;
-  initialData?: Cotizacion;
+  onSubmit: (data: Omit<Cotizacion, 'id' | 'active' | 'usuarioId' | 'fecha'>) => void,
+  initialData?: Cotizacion,
   onCancel: () => void
 }> = ({ onSubmit, initialData, onCancel }) => {
   const [formData, setFormData] = useState<Omit<Cotizacion, 'id' | 'active' | 'usuarioId' | 'fecha'>>(
@@ -219,14 +221,9 @@ const CotizacionForm: FunctionComponent<{
 
   const handleSubmit = (e: Event) => {
     e.preventDefault();
-    const parsedCotizacion = parseFloat(formData.cotizacion.replace(',', '.'));
-    if (isNaN(parsedCotizacion)) {
-      alert('Por favor, ingrese un valor numérico válido para la cotización.');
-      return;
-    }
     onSubmit({
       mineral: formData.mineral.toUpperCase(),
-      cotizacion: parsedCotizacion,
+      cotizacion: parseFloat(formData.cotizacion.replace(',', '.')),
       unidad: formData.unidad.toUpperCase()
     });
   };
@@ -246,8 +243,8 @@ const CotizacionForm: FunctionComponent<{
         value={formData.cotizacion}
         onChange={(e) => {
           const value = (e.target as HTMLInputElement).value;
-          const regex = /^-?\d*[.,]?\d*$/;
-          if (regex.test(value) || value === '') {
+          const numericValue = value.replace(',', '.');
+          if (!isNaN(parseFloat(numericValue)) || value === '' || value === '-') {
             setFormData({ ...formData, cotizacion: value });
           }
         }}

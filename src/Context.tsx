@@ -1,5 +1,6 @@
 import { createContext, ComponentChildren } from 'preact';
-import { useState, useContext, useCallback } from 'preact/hooks';
+import { useState, useContext, useCallback, useRef, useEffect } from 'preact/hooks';
+import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 interface APIContextType {
   token: string | null;
@@ -7,24 +8,21 @@ interface APIContextType {
   login: (credentials: Credentials) => Promise<LoginResponse>;
   logout: () => void;
   apiCall: <T>(endpoint: string, method?: string, data?: unknown, params?: Record<string, string>) => Promise<T>;
+  URL: string;
+  handleUpload: (formData: FormData) => Promise<void>;
 }
 
 interface Credentials {
   username: string;
   password: string;
-  categoriaServicio?:string;
 }
-interface Empleado{
-    id:string;
-    nombres:string;
-    apellidos:string;
-    estado:string;
-}
+
 interface LoginResponse {
   token: string;
-  empleado:Empleado;
-  puntoAtencion?:string;
-  permisos?:string;
+  rol: string;
+  empleado: any;
+  usuario: any;
+  permisos: string[];
 }
 
 interface RefreshTokenResponse {
@@ -33,34 +31,57 @@ interface RefreshTokenResponse {
 
 const APIContext = createContext<APIContextType | null>(null);
 
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = 'http://192.168.1.200:3000';
+
+const axiosInstance = axios.create({
+  baseURL: BASE_URL,
+});
 
 export function APIProvider({ children }: { children: ComponentChildren }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
+  const [URL] = useState<string>(BASE_URL);
+  const refreshPromise = useRef<Promise<string> | null>(null);
+
+  const updateToken = useCallback((newToken: string | null) => {
+    setToken(newToken);
+    if (newToken) {
+      localStorage.setItem('token', newToken);
+    } else {
+      localStorage.removeItem('token');
+    }
+  }, []);
+
+  const logout = useCallback(() => {
+    updateToken(null);
+    localStorage.removeItem('empleado');
+    localStorage.removeItem('usuario');
+    localStorage.removeItem('permisos');
+  }, [updateToken]);
 
   const refreshToken = useCallback(async (): Promise<string> => {
-    try {
-      const response = await fetch(`${BASE_URL}/auth/refresh`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-      });
-      if (!response.ok) throw new Error('Failed to refresh token');
-      const data: RefreshTokenResponse = await response.json();
-      setToken(data.newToken);
-      localStorage.setItem('token', data.newToken);
-      return data.newToken;
-    } catch (error) {
-      console.error('Error refreshing token:', error);
-      setToken(null);
-      localStorage.removeItem('token');
-      localStorage.removeItem('empleado');
-      localStorage.removeItem('categoriaServicio');
-      throw error;
+    if (refreshPromise.current) {
+      return refreshPromise.current;
     }
-  }, [token]);
+
+    refreshPromise.current = axios.post<RefreshTokenResponse>(`${BASE_URL}/auth/refresh`, {}, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(response => {
+        const newToken = response.data.newToken;
+        updateToken(newToken);
+        return newToken;
+      })
+      .catch(error => {
+        console.error('Error refreshing token:', error);
+        logout();
+        throw error;
+      })
+      .finally(() => {
+        refreshPromise.current = null;
+      });
+
+    return refreshPromise.current;
+  }, [token, updateToken, logout]);
 
   const apiCall = useCallback(async <T,>(
     endpoint: string,
@@ -68,69 +89,120 @@ export function APIProvider({ children }: { children: ComponentChildren }) {
     data: unknown = null,
     params: Record<string, string> | null = null
   ): Promise<T> => {
-    let url = `${BASE_URL}${endpoint}`;
-    if (params) {
-      const searchParams = new URLSearchParams(params);
-      url += `?${searchParams.toString()}`;
-    }
+    const makeRequest = async (accessToken: string | null): Promise<AxiosResponse<T>> => {
+      const headers: Record<string, string> = {};
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
 
-    const options: RequestInit = {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: data ? JSON.stringify(data) : undefined
+      return axiosInstance.request<T>({
+        url: endpoint,
+        method,
+        data,
+        params,
+        headers,
+      });
     };
 
     try {
-      let response = await fetch(url, options);
-
-      if (response.status === 401) {
-        // Token expired, try to refresh
-        const newToken = await refreshToken();
-        options.headers = {
-          ...options.headers,
-          'Authorization': `Bearer ${newToken}`
-        };
-        response = await fetch(url, options);
+      if (!token) {
+        throw new Error('No authentication token available');
       }
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      if (method === 'DELETE' && response.status === 204) {
-        return {} as T; // Para respuestas exitosas sin contenido en operaciones DELETE
-      }
-      return await response.json();
+      const response = await makeRequest(token);
+      return response.data;
     } catch (error) {
+      if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
+        try {
+          console.log('Attempting to refresh token...');
+          const newToken = await refreshToken();
+          console.log('Token refreshed successfully. Retrying original request...');
+          const retryResponse = await makeRequest(newToken);
+          return retryResponse.data;
+        } catch (refreshError) {
+          console.error('Error refreshing token:', refreshError);
+          logout();
+          throw refreshError;
+        }
+      }
       console.error('API call error:', error);
       throw error;
     }
-  }, [token, refreshToken]);
+  }, [token, refreshToken, logout]);
 
   const login = useCallback(async (credentials: Credentials): Promise<LoginResponse> => {
-    const data = await apiCall<LoginResponse>('/auth/login', 'POST', credentials);
-    setToken(data.token);
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('empleado', JSON.stringify(data.empleado));
-    return data;
+    try {
+      const response = await axiosInstance.post<LoginResponse>('/auth/login', credentials);
+      const data = response.data;
+      console.log('Login response:', data);
+      updateToken(data.token);
+      localStorage.setItem('empleado', JSON.stringify(data.empleado));
+      localStorage.setItem('usuario', JSON.stringify(data.usuario));
+      localStorage.setItem('permisos', JSON.stringify(data.permisos));
+      return data;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
+  }, [updateToken]);
+
+  const handleUpload = useCallback(async (formData: FormData): Promise<void> => {
+    try {
+      await apiCall('/ext/videos', 'POST', formData);
+    } catch (error) {
+      console.error('Error uploading video:', error);
+      throw new Error('Error al subir el video. Por favor, intente de nuevo.');
+    }
   }, [apiCall]);
 
-  const logout = useCallback(() => {
-    setToken(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('empleado');
-    localStorage.removeItem('puntoAtencion');
-    localStorage.removeItem('permisos');
-  }, []);
+  useEffect(() => {
+    const requestInterceptor = axiosInstance.interceptors.request.use(
+      (config) => {
+        if (token && config.headers) {
+          config.headers['Authorization'] = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
+    const responseInterceptor = axiosInstance.interceptors.response.use(
+      (response) => response,
+      async (error: AxiosError) => {
+        const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+        if ((error.response?.status === 401 || error.response?.status === 403) && !originalRequest._retry) {
+          originalRequest._retry = true;
+          try {
+            console.log('Response interceptor: Attempting to refresh token...');
+            const newToken = await refreshToken();
+            console.log('Response interceptor: Token refreshed successfully. Retrying original request...');
+            if (originalRequest.headers) {
+              originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+            }
+            return axiosInstance(originalRequest);
+          } catch (refreshError) {
+            console.error('Response interceptor: Error refreshing token:', refreshError);
+            logout();
+            return Promise.reject(refreshError);
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axiosInstance.interceptors.request.eject(requestInterceptor);
+      axiosInstance.interceptors.response.eject(responseInterceptor);
+    };
+  }, [token, refreshToken, logout]);
 
   const contextValue: APIContextType = {
     token,
     isAuthenticated: !!token,
     login,
     logout,
-    apiCall
+    apiCall,
+    URL,
+    handleUpload
   };
 
   return (

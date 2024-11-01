@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'preact/hooks';
-import { Categorias } from './componentes/Categorias';
 import { Servicios } from './componentes/Servicios';
-import { PuntosAtencion } from './componentes/Atencion';
 import { Empleado } from './componentes/Empleados';
 import { Reporte } from './componentes/Reportes';
+import { Fichas } from './componentes/Fichas';
 import { Cotizacion } from './componentes/Cotizaciones';
 import { Videos } from './componentes/Videos';
 import { Caja } from './componentes/Caja';
@@ -13,8 +12,7 @@ import { useAPI } from './Context';
 
 // Constants
 type ViewType = 'login' | 'dashboard' | 'caja';
-type PuntoAtencionType = 'Ejecutivo' |'Caja' | '';
-type DashboardViewType = 'home' | 'servicios' | 'categorias' | 'puntosAtencion' | 'empleados' | 'cotizacion' |'videos'|'reportes';
+type DashboardViewType = 'servicios y categorias' | 'empleados' | 'cotizacion' |'videos'|'reportes'|'fichas';
 interface DashboardViewProps {
   dashboardView: DashboardViewType;
   setDashboardView: (view: DashboardViewType) => void;
@@ -73,13 +71,13 @@ const styles = `
   .login-button { width: 100%; padding: 0.5rem; background-color: #4f46e5; color: white; border: none; border-radius: 0.25rem; cursor: pointer; }
   
   .dashboard-container { display: flex; min-height: 100vh; }
-  .dashboard-sidebar { width: 250px; background-color: #1f2937; color: white; padding: 1rem; }
+  .dashboard-sidebar { width: 200px; background-color: #1f2937; color: white; padding: 1rem; }
   .dashboard-logo { font-size: 1.25rem; font-weight: 600; margin-bottom: 2rem; }
   .dashboard-nav { display: flex; flex-direction: column; gap: 0.5rem; }
   .dashboard-nav-button { background: none; border: none; color: #d1d5db; text-align: left; padding: 0.5rem; cursor: pointer; transition: background-color 0.3s; }
   .dashboard-nav-button:hover { background-color: #374151; }
   .dashboard-nav-button.active { background-color: #374151; color: white; }
-  .dashboard-main { flex-grow: 1; padding: 2rem; }
+  .dashboard-main { flex-grow: 1; padding: 5px; }
   .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
   .dashboard-title { font-size: 1.5rem; font-weight: 700; }
   
@@ -93,21 +91,13 @@ const styles = `
   
   .chart-container { height: 400px; margin-top: 2rem; }
 `;
-const HomeView = ({ fichas, categorias, puntosAtencion }:HomeViewProps) => (
-  <div className="view-container">
-    <h2 className="view-title">Resumen del Sistema</h2>
-    <p>Total de fichas recientes: {fichas.length}</p>
-    <p>Categorías activas: {categorias.length}</p>
-    <p>Puntos de atención: {puntosAtencion.length}</p>
-  </div>
-);
 const DashboardView = ({ dashboardView, setDashboardView, handleLogout, fichas, categorias, puntosAtencion }
   :DashboardViewProps) => (
   <div className="dashboard-container">
     <aside className="dashboard-sidebar">
       <div className="dashboard-logo">Gestión de Colas</div>
       <nav className="dashboard-nav">
-        {['home', 'servicios', 'categorias', 'puntosAtencion', 'empleados','cotizacion','videos', 'reportes'].map((view) => (
+        {['reportes','fichas','servicios y categorias','empleados','cotizacion','videos'].map((view) => (
           <button
             key={view}
             onClick={() => setDashboardView(view as DashboardViewType)}
@@ -122,9 +112,10 @@ const DashboardView = ({ dashboardView, setDashboardView, handleLogout, fichas, 
       </button>
     </aside>
     <main className="dashboard-main">
-      <header className="dashboard-header">
+      {/* <header className="dashboard-header">
         <h1 className="dashboard-title">
           {dashboardView === 'home' && 'Resumen'}
+          {dashboardView === 'fichas' && 'Fichas'}
           {dashboardView === 'servicios' && 'Gestión de Servicios'}
           {dashboardView === 'categorias' && 'Gestión de Categorías'}
           {dashboardView === 'puntosAtencion' && 'Gestión de Puntos de Atención'}
@@ -133,15 +124,13 @@ const DashboardView = ({ dashboardView, setDashboardView, handleLogout, fichas, 
           {dashboardView === 'videos' && 'Gestión de Videos'}
           {dashboardView === 'reportes' && 'Reportes'}
         </h1>
-      </header>
-      {dashboardView === 'home' && <HomeView fichas={fichas} categorias={categorias} puntosAtencion={puntosAtencion} />}
-      {dashboardView === 'servicios' && <Servicios />}
-      {dashboardView === 'categorias' && <Categorias />}
-      {dashboardView === 'puntosAtencion' && <PuntosAtencion />}
+        </header> */}
+        {dashboardView === 'reportes' && <Reporte />}
+      {dashboardView === 'fichas' && <Fichas />}
+      {dashboardView === 'servicios y categorias' && <Servicios />}
       {dashboardView === 'empleados' && <Empleado />}
       {dashboardView === 'cotizacion' && <Cotizacion />}
       {dashboardView === 'videos' && <Videos />}
-      {dashboardView === 'reportes' && <Reporte />}
     </main>
   </div>
 );
@@ -202,7 +191,7 @@ export function Main() {
   const fetchData = async () => {
     try {
       const [fichasData, categoriasData, puntosAtencionData] = await Promise.all([
-        apiCall<Ficha[]>('/api/fichas-recientes'),
+        apiCall<Ficha[]>('/api/ficha/recientes'),
         apiCall<Categoria[]>('/api/categorias'),
         apiCall<PuntoAtencion[]>('/api/puntos-atencion'),
       ]);

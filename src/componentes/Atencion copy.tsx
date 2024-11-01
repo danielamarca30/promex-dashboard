@@ -1,13 +1,7 @@
-import { FunctionComponent } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
-import { useAPI } from '../Context'; // Asegúrate de que esta ruta sea correcta
+import { useAPI } from '../Context'; // Adjust the import path as needed
 
 // Types
-interface ConfirmationModalProps {
-  message: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-}
 type PuntoAtencion = {
   id: string;
   nombre: string;
@@ -27,7 +21,7 @@ type Empleado = {
   apellidos: string;
 };
 
-// Styles
+// Styles (reusing the styles from the previous components)
 const styles = {
   container: {
     fontFamily: 'Arial, sans-serif',
@@ -120,33 +114,23 @@ const styles = {
 };
 
 // Components
-const PuntoAtencionForm = ({ onSubmit, categories, empleados, initialData, onCancel }: { 
+const PuntoAtencionForm = ({ onSubmit, categories, empleados, initialData }: { 
   onSubmit: (data: Omit<PuntoAtencion, 'id'>) => void, 
   categories: Categoria[], 
   empleados: Empleado[],
-  initialData?: PuntoAtencion,
-  onCancel: () => void
+  initialData?: PuntoAtencion 
 }) => {
-  const [formData, setFormData] = useState<Omit<PuntoAtencion, 'id'>>(
-    initialData || { 
-      nombre: '', 
-      categoriaId: '', 
-      empleadoId: null, 
-      activo: true 
-    }
-  );
-
-  useEffect(() => {
-    if (initialData) {
-      setFormData(initialData);
-    } else {
-      setFormData({ nombre: '', categoriaId: '', empleadoId: null, activo: true });
-    }
-  }, [initialData]);
+  const [formData, setFormData] = useState<Omit<PuntoAtencion, 'id'>>(initialData || { 
+    nombre: '', 
+    categoriaId: '', 
+    empleadoId: null, 
+    activo: true 
+  });
 
   const handleSubmit = (e: Event) => {
     e.preventDefault();
     onSubmit(formData);
+    setFormData({ nombre: '', categoriaId: '', empleadoId: null, activo: true });
   };
 
   return (
@@ -189,35 +173,9 @@ const PuntoAtencionForm = ({ onSubmit, categories, empleados, initialData, onCan
         Activo
       </label>
       <button type="submit" style={styles.button}>{initialData ? 'Actualizar' : 'Añadir'} Punto de Atención</button>
-      <button type="button" onClick={onCancel} style={{...styles.button, backgroundColor: '#f44336'}}>Cancelar</button>
     </form>
   );
 };
-
-const ConfirmationModal: FunctionComponent<ConfirmationModalProps> = ({ message, onConfirm, onCancel }) => (
-  <div style={{
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-  }}>
-    <div style={{
-      backgroundColor: 'white',
-      padding: '20px',
-      borderRadius: '8px',
-      textAlign: 'center',
-    }}>
-      <p>{message}</p>
-      <button onClick={onConfirm} style={{...styles.button, marginRight: '10px'}}>Confirmar</button>
-      <button onClick={onCancel} style={{...styles.button, backgroundColor: '#f44336'}}>Cancelar</button>
-    </div>
-  </div>
-);
 
 // Main App Component
 export function PuntosAtencion() {
@@ -226,7 +184,6 @@ export function PuntosAtencion() {
   const [categories, setCategories] = useState<Categoria[]>([]);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [editingPuntoAtencion, setEditingPuntoAtencion] = useState<PuntoAtencion | null>(null);
-  const [deletingPuntoAtencion, setDeletingPuntoAtencion] = useState<PuntoAtencion | null>(null);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -263,34 +220,32 @@ export function PuntosAtencion() {
     }
   };
 
-  const handleSubmitPuntoAtencion = async (puntoAtencion: Omit<PuntoAtencion, 'id'>) => {
+  const handleAddPuntoAtencion = async (puntoAtencion: Omit<PuntoAtencion, 'id'>) => {
     try {
-      if (editingPuntoAtencion) {
-        await apiCall<PuntoAtencion>(`/api/puntos-atencion/${editingPuntoAtencion.id}`, 'PUT', puntoAtencion);
-      } else {
-        await apiCall<PuntoAtencion>('/api/puntos-atencion', 'POST', puntoAtencion);
-      }
+      await apiCall<PuntoAtencion>('/api/puntos-atencion', 'POST', puntoAtencion);
+      fetchPuntosAtencion();
+    } catch (error) {
+      console.error('Error adding punto de atención:', error);
+    }
+  };
+
+  const handleUpdatePuntoAtencion = async (puntoAtencion: PuntoAtencion) => {
+    try {
+      await apiCall<PuntoAtencion>(`/api/puntos-atencion/${puntoAtencion.id}`, 'PUT', puntoAtencion);
       fetchPuntosAtencion();
       setEditingPuntoAtencion(null);
     } catch (error) {
-      console.error('Error submitting punto de atención:', error);
+      console.error('Error updating punto de atención:', error);
     }
   };
 
-  const handleDeletePuntoAtencion = async () => {
-    if (deletingPuntoAtencion) {
-      try {
-        await apiCall(`/api/puntos-atencion/${deletingPuntoAtencion.id}`, 'DELETE');
-        fetchPuntosAtencion();
-        setDeletingPuntoAtencion(null);
-      } catch (error) {
-        console.error('Error deleting punto de atención:', error);
-      }
+  const handleDeletePuntoAtencion = async (id: string) => {
+    try {
+      await apiCall(`/api/puntos-atencion/${id}`, 'DELETE');
+      fetchPuntosAtencion();
+    } catch (error) {
+      console.error('Error deleting punto de atención:', error);
     }
-  };
-
-  const handleCancelForm = () => {
-    setEditingPuntoAtencion(null);
   };
 
   const handleLogin = async () => {
@@ -313,13 +268,19 @@ export function PuntosAtencion() {
   return (
     <div style={styles.container}>
       <h2 style={styles.title}>Puntos de Atención</h2>
-      <PuntoAtencionForm 
-        onSubmit={handleSubmitPuntoAtencion} 
-        categories={categories} 
-        empleados={empleados}
-        initialData={editingPuntoAtencion || undefined}
-        onCancel={handleCancelForm}
-      />
+      <PuntoAtencionForm onSubmit={handleAddPuntoAtencion} categories={categories} empleados={empleados} />
+      {editingPuntoAtencion && (
+        <div>
+          <h3 style={styles.title}>Editar Punto de Atención</h3>
+          <PuntoAtencionForm 
+            onSubmit={(data) => handleUpdatePuntoAtencion({ ...data, id: editingPuntoAtencion.id })} 
+            categories={categories} 
+            empleados={empleados}
+            initialData={editingPuntoAtencion} 
+          />
+          <button onClick={() => setEditingPuntoAtencion(null)} style={styles.button}>Cancelar Edición</button>
+        </div>
+      )}
 
       <h2 style={styles.title}>Lista de Puntos de Atención</h2>
       <table style={styles.table}>
@@ -345,20 +306,12 @@ export function PuntosAtencion() {
               <td style={styles.td}>{punto.activo ? 'Sí' : 'No'}</td>
               <td style={styles.td}>
                 <button onClick={() => setEditingPuntoAtencion(punto)} style={styles.actionButton}>Editar</button>
-                <button onClick={() => setDeletingPuntoAtencion(punto)} style={{...styles.actionButton, ...styles.deleteButton}}>Eliminar</button>
+                <button onClick={() => handleDeletePuntoAtencion(punto.id)} style={{...styles.actionButton, ...styles.deleteButton}}>Eliminar</button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-
-      {deletingPuntoAtencion && (
-        <ConfirmationModal
-          message={`¿Está seguro de que desea eliminar el punto de atención "${deletingPuntoAtencion.nombre}"?`}
-          onConfirm={handleDeletePuntoAtencion}
-          onCancel={() => setDeletingPuntoAtencion(null)}
-        />
-      )}
     </div>
   );
 }

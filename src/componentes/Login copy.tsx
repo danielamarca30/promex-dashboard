@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'preact/hooks';
 import { useAPI } from '../Context';
-import logoImage from '@/assets/logo.png'
 
 interface PuntoAtencion {
   id: string;
@@ -15,79 +14,62 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     minHeight: '100vh',
-    background: 'linear-gradient(135deg, #3498db 0%, #8e44ad 100%)',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
   },
   loginFormContainer: {
     backgroundColor: 'white',
     padding: '2rem',
-    borderRadius: '12px',
-    boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)',
+    borderRadius: '8px',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
     width: '100%',
     maxWidth: '400px',
   },
-  logoContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: '1.5rem',
-  },
-  logo: {
-    width: '150px',
-    height: '80px',
-    marginRight: '1rem',
-  },
-  companyName: {
-    fontSize: '1.5rem',
-    fontWeight: 'bold',
-    color: '#2c3e50',
-  },
   loginTitle: {
-    fontSize: '1.75rem',
+    fontSize: '1.5rem',
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: '1.5rem',
-    color: '#2c3e50',
+    color: '#333',
   },
   loginForm: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '1.25rem',
+    gap: '1rem',
   },
   formGroup: {
     display: 'flex',
     flexDirection: 'column',
   },
   formLabel: {
-    fontSize: '0.9rem',
-    fontWeight: '600',
+    fontSize: '0.875rem',
+    fontWeight: '500',
     marginBottom: '0.5rem',
-    color: '#34495e',
+    color: '#4a5568',
   },
   formInput: {
-    padding: '0.75rem',
-    border: '2px solid #bdc3c7',
-    borderRadius: '6px',
+    padding: '0.5rem',
+    border: '1px solid #e2e8f0',
+    borderRadius: '4px',
     fontSize: '1rem',
     transition: 'border-color 0.2s ease-in-out',
   },
   loginButton: {
-    backgroundColor: '#3498db',
+    backgroundColor: '#4299e1',
     color: 'white',
     padding: '0.75rem',
     border: 'none',
-    borderRadius: '6px',
+    borderRadius: '4px',
     fontSize: '1rem',
-    fontWeight: '600',
+    fontWeight: '500',
     cursor: 'pointer',
     transition: 'background-color 0.2s ease-in-out',
   },
   select: {
-    padding: '0.75rem',
-    marginBottom: '1rem',
-    border: '2px solid #bdc3c7',
-    borderRadius: '6px',
+    padding: '8px',
+    marginBottom: '10px',
+    border: '1px solid #ccc',
+    borderRadius: '4px',
     width: '100%',
-    fontSize: '1rem',
   },
   modal: {
     position: 'fixed',
@@ -96,8 +78,8 @@ const styles = {
     transform: 'translate(-50%, -50%)',
     backgroundColor: 'white',
     padding: '2rem',
-    borderRadius: '12px',
-    boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)',
+    borderRadius: '8px',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
     zIndex: 1000,
   },
   modalOverlay: {
@@ -110,22 +92,21 @@ const styles = {
     zIndex: 999,
   },
   modalTitle: {
-    fontSize: '1.5rem',
+    fontSize: '1.25rem',
     fontWeight: 'bold',
     marginBottom: '1rem',
-    color: '#2c3e50',
   },
   modalButton: {
-    backgroundColor: '#3498db',
+    backgroundColor: '#4299e1',
     color: 'white',
-    padding: '0.75rem 1.5rem',
+    padding: '0.5rem 1rem',
     border: 'none',
-    borderRadius: '6px',
+    borderRadius: '4px',
     fontSize: '1rem',
-    fontWeight: '600',
+    fontWeight: '500',
     cursor: 'pointer',
     transition: 'background-color 0.2s ease-in-out',
-    marginTop: '1.5rem',
+    marginTop: '1rem',
   },
 };
 
@@ -207,15 +188,8 @@ export const LoginView = ({ setView }: { setView: (view: string) => void }) => {
   return (
     <div style={styles.loginContainer}>
       <div style={styles.loginFormContainer}>
-        <div style={styles.logoContainer}>
-          <img
-            src={logoImage}
-            alt="Promex-Bol Logo"
-            style={styles.logo}
-          />
-        </div>
         <h2 style={styles.loginTitle}>Iniciar sesión</h2>
-        {error && <p style={{ color: '#e74c3c', textAlign: 'center' }}>{error}</p>}
+        {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
         <form onSubmit={handleLogin} style={styles.loginForm}>
           <div style={styles.formGroup}>
             <label htmlFor="username" style={styles.formLabel}>

@@ -1,36 +1,21 @@
-import { FunctionComponent } from 'preact';
-import { useState, useEffect } from 'preact/hooks';
-import { useAPI } from '../Context'; // Adjust the import path as needed
-import axios from 'axios';
-import { Save, X } from 'lucide-react';
+import { h } from 'preact';
+import { useState, useEffect, useCallback } from 'preact/hooks';
+import { useAPI } from '../Context';
 
 interface Video {
   id: string;
   title: string;
   description: string;
+  usuarioId: string;
   active: boolean;
 }
 
-interface ConfirmationModalProps {
-  message: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-}
-
-interface EditVideoFormProps {
-  video: Video;
-  onSave: (updatedVideo: Video) => void;
-  onCancel: () => void;
-}
-
 export function Videos() {
+  const { apiCall } = useAPI();
   const [videos, setVideos] = useState<Video[]>([]);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [deletingVideo, setDeletingVideo] = useState<string | null>(null);
-  const [editingVideo, setEditingVideo] = useState<Video | null>(null);
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const { URL,handleUpload, apiCall } = useAPI();
 
   useEffect(() => {
     fetchVideos();
@@ -39,14 +24,21 @@ export function Videos() {
   const fetchVideos = async () => {
     try {
       const response = await apiCall<Video[]>('/ext/videos');
-      setVideos(response.map(video => ({
-        ...video,
-        title: video.title.toUpperCase(),
-        description: video.description.toUpperCase()
-      })));
+      setVideos(response);
     } catch (error) {
       console.error('Error fetching videos:', error);
       setError('Error al cargar los videos. Por favor, intente de nuevo.');
+    }
+  };
+
+  const handleUpload = async (formData: FormData) => {
+    try {
+      await apiCall('/ext/videos', 'POST', formData);
+      alert('Video uploaded successfully!');
+      fetchVideos();
+    } catch (error) {
+      console.error('Error uploading video:', error);
+      setError('Error al subir el video. Por favor, intente de nuevo.');
     }
   };
 
@@ -77,21 +69,6 @@ export function Videos() {
     }
   };
 
-  const handleEdit = async (updatedVideo: Video) => {
-    try {
-      await apiCall(`/ext/videos/${updatedVideo.id}`, 'PUT', {
-        title: updatedVideo.title.toUpperCase(),
-        description: updatedVideo.description.toUpperCase(),
-        active: updatedVideo.active
-      });
-      setEditingVideo(null);
-      fetchVideos();
-    } catch (error) {
-      console.error('Error updating video:', error);
-      setError('Error al actualizar el video. Por favor, intente de nuevo.');
-    }
-  };
-
   const handleNextVideo = () => {
     setCurrentVideoIndex(prevIndex => 
       prevIndex < videos.length - 1 ? prevIndex + 1 : 0
@@ -104,6 +81,7 @@ export function Videos() {
     );
   };
 
+  // Styles (unchanged)
   const styles = {
     container: {
       fontFamily: 'Arial, sans-serif',
@@ -181,106 +159,10 @@ export function Videos() {
     deleteButton: {
       backgroundColor: '#f44336',
     },
-    uploadButton: {
-      backgroundColor: '#4CAF50',
-      color: 'white',
-      padding: '12px 20px',
-      border: 'none',
-      borderRadius: '4px',
-      cursor: 'pointer',
-      fontSize: '16px',
-      fontWeight: 'bold',
-      textTransform: 'uppercase',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-      transition: 'background-color 0.3s ease',
-    },
-    editFormOverlay: {
-      position: 'fixed' as const,
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 1000,
-    },
-    editForm: {
-      backgroundColor: 'white',
-      borderRadius: '8px',
-      padding: '20px',
-      width: '90%',
-      maxWidth: '500px',
-      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    },
-    editFormTitle: {
-      fontSize: '24px',
-      fontWeight: 'bold',
-      marginBottom: '20px',
-      color: '#333',
-    },
-    editFormContent: {
-      display: 'flex',
-      flexDirection: 'column' as const,
-      gap: '15px',
-    },
-    label: {
-      fontSize: '14px',
-      fontWeight: 'bold',
-      color: '#555',
-    },
-    editInput: {
-      padding: '10px',
-      fontSize: '16px',
-      border: '1px solid #ddd',
-      borderRadius: '4px',
-      width: '80%',
-    },
-    editTextarea: {
-      padding: '10px',
-      fontSize: '16px',
-      border: '1px solid #ddd',
-      borderRadius: '4px',
-      width: '80%',
-      minHeight: '100px',
-      resize: 'vertical' as const,
-    },
-    editFormActions: {
-      display: 'flex',
-      justifyContent: 'flex-end',
-      gap: '10px',
-      marginTop: '20px',
-    },
-    editSaveButton: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '5px',
-      padding: '10px 15px',
-      backgroundColor: '#4CAF50',
-      color: 'white',
-      border: 'none',
-      borderRadius: '4px',
-      cursor: 'pointer',
-      fontSize: '14px',
-      fontWeight: 'bold',
-    },
-    editCancelButton: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '5px',
-      padding: '10px 15px',
-      backgroundColor: '#f44336',
-      color: 'white',
-      border: 'none',
-      borderRadius: '4px',
-      cursor: 'pointer',
-      fontSize: '14px',
-      fontWeight: 'bold',
-    },
   };
 
-  const VideoUploadForm: FunctionComponent<{ onSubmit: (data: FormData) => void }> = ({ onSubmit }) => {
+  // VideoUploadForm component
+  const VideoUploadForm = ({ onSubmit }: { onSubmit: (data: FormData) => void }) => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [file, setFile] = useState<File | null>(null);
@@ -290,8 +172,8 @@ export function Videos() {
       if (!file) return;
 
       const formData = new FormData();
-      formData.append('title', title.toUpperCase());
-      formData.append('description', description.toUpperCase());
+      formData.append('title', title);
+      formData.append('description', description);
       formData.append('video', file);
       formData.append('usuarioId', 'user123');
 
@@ -306,14 +188,14 @@ export function Videos() {
         <input
           type="text"
           value={title}
-          onInput={(e) => setTitle((e.target as HTMLInputElement).value.toUpperCase())}
+          onInput={(e) => setTitle((e.target as HTMLInputElement).value)}
           placeholder="Título del video"
           required
           style={styles.input}
         />
         <textarea
           value={description}
-          onInput={(e) => setDescription((e.target as HTMLTextAreaElement).value.toUpperCase())}
+          onInput={(e) => setDescription((e.target as HTMLTextAreaElement).value)}
           placeholder="Descripción del video"
           style={styles.input}
         ></textarea>
@@ -324,64 +206,13 @@ export function Videos() {
           required
           style={styles.input}
         />
-        <button type="submit" style={styles.uploadButton}>Subir Video</button>
+        <button type="submit" style={styles.button}>Subir Video</button>
       </form>
     );
   };
 
-  const EditVideoForm: FunctionComponent<EditVideoFormProps> = ({ video, onSave, onCancel }) => {
-    const [title, setTitle] = useState(video.title);
-    const [description, setDescription] = useState(video.description);
-  
-    const handleSubmit = (e: Event) => {
-      e.preventDefault();
-      onSave({
-        ...video,
-        title: title.toUpperCase(),
-        description: description.toUpperCase()
-      });
-    };
-  
-    return (
-      <div style={styles.editFormOverlay}>
-        <div style={styles.editForm}>
-          <h2 style={styles.editFormTitle}>Editar Video</h2>
-          <form onSubmit={handleSubmit} style={styles.editFormContent}>
-            <label htmlFor="edit-title" style={styles.label}>Título</label>
-            <input
-              id="edit-title"
-              type="text"
-              value={title}
-              onInput={(e) => setTitle((e.target as HTMLInputElement).value.toUpperCase())}
-              placeholder="Título del video"
-              required
-              style={styles.editInput}
-            />
-            <label htmlFor="edit-description" style={styles.label}>Descripción</label>
-            <textarea
-              id="edit-description"
-              value={description}
-              onInput={(e) => setDescription((e.target as HTMLTextAreaElement).value.toUpperCase())}
-              placeholder="Descripción del video"
-              style={styles.editTextarea}
-            ></textarea>
-            <div style={styles.editFormActions}>
-              <button type="submit" style={styles.editSaveButton}>
-                <Save size={16} />
-                <span>Guardar</span>
-              </button>
-              <button type="button" onClick={onCancel} style={styles.editCancelButton}>
-                <X size={16} />
-                <span>Cancelar</span>
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
-  };
-  
-  const ConfirmationModal: FunctionComponent<ConfirmationModalProps> = ({ message, onConfirm, onCancel }) => (
+  // ConfirmationModal component
+  const ConfirmationModal = ({ message, onConfirm, onCancel }) => (
     <div style={{
       position: 'fixed',
       top: 0,
@@ -420,7 +251,7 @@ export function Videos() {
         {videos.length > 0 && (
           <div>
             <video 
-              src={`${URL}/ext/stream/${videos[currentVideoIndex].id}`} 
+              src={`http://192.168.194.31/ext/stream/${videos[currentVideoIndex].id}`} 
               controls 
               style={{ width: '100%', maxWidth: '600px', margin: '0 auto', display: 'block' }}
             ></video>
@@ -452,12 +283,6 @@ export function Videos() {
                 <td style={styles.td}>{video.active ? 'Activo' : 'Inactivo'}</td>
                 <td style={styles.td}>
                   <button 
-                    onClick={() => setEditingVideo(video)}
-                    style={styles.actionButton}
-                  >
-                    Editar
-                  </button>
-                  <button 
                     onClick={() => handleToggleActive(video.id, video.active)}
                     style={styles.actionButton}
                   >
@@ -481,22 +306,6 @@ export function Videos() {
           message="¿Está seguro de que desea eliminar este video?"
           onConfirm={() => handleDelete(deletingVideo)}
           onCancel={() => setDeletingVideo(null)}
-        />
-      )}
-
-      {editingVideo && (
-        <EditVideoForm
-          video={editingVideo}
-          onSave={handleEdit}
-          onCancel={() => setEditingVideo(null)}
-        />
-      )}
-
-      {showUploadModal && (
-        <ConfirmationModal
-          message="Video subido exitosamente!"
-          onConfirm={() => setShowUploadModal(false)}
-          onCancel={() => setShowUploadModal(false)}
         />
       )}
     </div>

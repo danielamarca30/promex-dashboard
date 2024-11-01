@@ -2,8 +2,6 @@ import { FunctionComponent } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { useAPI } from '../Context'; // Adjust the import path as needed
 import axios from 'axios';
-import { Save, X } from 'lucide-react';
-
 interface Video {
   id: string;
   title: string;
@@ -29,8 +27,7 @@ export function Videos() {
   const [error, setError] = useState<string | null>(null);
   const [deletingVideo, setDeletingVideo] = useState<string | null>(null);
   const [editingVideo, setEditingVideo] = useState<Video | null>(null);
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const { URL,handleUpload, apiCall } = useAPI();
+  const { URL, apiCall } = useAPI();
 
   useEffect(() => {
     fetchVideos();
@@ -47,6 +44,21 @@ export function Videos() {
     } catch (error) {
       console.error('Error fetching videos:', error);
       setError('Error al cargar los videos. Por favor, intente de nuevo.');
+    }
+  };
+
+  const handleUpload = async (formData: FormData) => {
+    try {
+      await axios.post(`${URL}:3000/ext/videos`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      alert('Video subido exitosamente!');
+      fetchVideos();
+    } catch (error) {
+      console.error('Error uploading video:', error);
+      setError('Error al subir el video. Por favor, intente de nuevo.');
     }
   };
 
@@ -181,103 +193,6 @@ export function Videos() {
     deleteButton: {
       backgroundColor: '#f44336',
     },
-    uploadButton: {
-      backgroundColor: '#4CAF50',
-      color: 'white',
-      padding: '12px 20px',
-      border: 'none',
-      borderRadius: '4px',
-      cursor: 'pointer',
-      fontSize: '16px',
-      fontWeight: 'bold',
-      textTransform: 'uppercase',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-      transition: 'background-color 0.3s ease',
-    },
-    editFormOverlay: {
-      position: 'fixed' as const,
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 1000,
-    },
-    editForm: {
-      backgroundColor: 'white',
-      borderRadius: '8px',
-      padding: '20px',
-      width: '90%',
-      maxWidth: '500px',
-      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    },
-    editFormTitle: {
-      fontSize: '24px',
-      fontWeight: 'bold',
-      marginBottom: '20px',
-      color: '#333',
-    },
-    editFormContent: {
-      display: 'flex',
-      flexDirection: 'column' as const,
-      gap: '15px',
-    },
-    label: {
-      fontSize: '14px',
-      fontWeight: 'bold',
-      color: '#555',
-    },
-    editInput: {
-      padding: '10px',
-      fontSize: '16px',
-      border: '1px solid #ddd',
-      borderRadius: '4px',
-      width: '80%',
-    },
-    editTextarea: {
-      padding: '10px',
-      fontSize: '16px',
-      border: '1px solid #ddd',
-      borderRadius: '4px',
-      width: '80%',
-      minHeight: '100px',
-      resize: 'vertical' as const,
-    },
-    editFormActions: {
-      display: 'flex',
-      justifyContent: 'flex-end',
-      gap: '10px',
-      marginTop: '20px',
-    },
-    editSaveButton: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '5px',
-      padding: '10px 15px',
-      backgroundColor: '#4CAF50',
-      color: 'white',
-      border: 'none',
-      borderRadius: '4px',
-      cursor: 'pointer',
-      fontSize: '14px',
-      fontWeight: 'bold',
-    },
-    editCancelButton: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '5px',
-      padding: '10px 15px',
-      backgroundColor: '#f44336',
-      color: 'white',
-      border: 'none',
-      borderRadius: '4px',
-      cursor: 'pointer',
-      fontSize: '14px',
-      fontWeight: 'bold',
-    },
   };
 
   const VideoUploadForm: FunctionComponent<{ onSubmit: (data: FormData) => void }> = ({ onSubmit }) => {
@@ -306,14 +221,14 @@ export function Videos() {
         <input
           type="text"
           value={title}
-          onInput={(e) => setTitle((e.target as HTMLInputElement).value.toUpperCase())}
+          onInput={(e) => setTitle((e.target as HTMLInputElement).value)}
           placeholder="Título del video"
           required
           style={styles.input}
         />
         <textarea
           value={description}
-          onInput={(e) => setDescription((e.target as HTMLTextAreaElement).value.toUpperCase())}
+          onInput={(e) => setDescription((e.target as HTMLTextAreaElement).value)}
           placeholder="Descripción del video"
           style={styles.input}
         ></textarea>
@@ -324,7 +239,7 @@ export function Videos() {
           required
           style={styles.input}
         />
-        <button type="submit" style={styles.uploadButton}>Subir Video</button>
+        <button type="submit" style={styles.button}>Subir Video</button>
       </form>
     );
   };
@@ -332,7 +247,7 @@ export function Videos() {
   const EditVideoForm: FunctionComponent<EditVideoFormProps> = ({ video, onSave, onCancel }) => {
     const [title, setTitle] = useState(video.title);
     const [description, setDescription] = useState(video.description);
-  
+
     const handleSubmit = (e: Event) => {
       e.preventDefault();
       onSave({
@@ -341,46 +256,31 @@ export function Videos() {
         description: description.toUpperCase()
       });
     };
-  
+
     return (
-      <div style={styles.editFormOverlay}>
-        <div style={styles.editForm}>
-          <h2 style={styles.editFormTitle}>Editar Video</h2>
-          <form onSubmit={handleSubmit} style={styles.editFormContent}>
-            <label htmlFor="edit-title" style={styles.label}>Título</label>
-            <input
-              id="edit-title"
-              type="text"
-              value={title}
-              onInput={(e) => setTitle((e.target as HTMLInputElement).value.toUpperCase())}
-              placeholder="Título del video"
-              required
-              style={styles.editInput}
-            />
-            <label htmlFor="edit-description" style={styles.label}>Descripción</label>
-            <textarea
-              id="edit-description"
-              value={description}
-              onInput={(e) => setDescription((e.target as HTMLTextAreaElement).value.toUpperCase())}
-              placeholder="Descripción del video"
-              style={styles.editTextarea}
-            ></textarea>
-            <div style={styles.editFormActions}>
-              <button type="submit" style={styles.editSaveButton}>
-                <Save size={16} />
-                <span>Guardar</span>
-              </button>
-              <button type="button" onClick={onCancel} style={styles.editCancelButton}>
-                <X size={16} />
-                <span>Cancelar</span>
-              </button>
-            </div>
-          </form>
+      <form onSubmit={handleSubmit} style={styles.form}>
+        <input
+          type="text"
+          value={title}
+          onInput={(e) => setTitle((e.target as HTMLInputElement).value)}
+          placeholder="Título del video"
+          required
+          style={styles.input}
+        />
+        <textarea
+          value={description}
+          onInput={(e) => setDescription((e.target as HTMLTextAreaElement).value)}
+          placeholder="Descripción del video"
+          style={styles.input}
+        ></textarea>
+        <div>
+          <button type="submit" style={styles.button}>Guardar</button>
+          <button type="button" onClick={onCancel} style={{...styles.button, backgroundColor: '#f44336'}}>Cancelar</button>
         </div>
-      </div>
+      </form>
     );
   };
-  
+
   const ConfirmationModal: FunctionComponent<ConfirmationModalProps> = ({ message, onConfirm, onCancel }) => (
     <div style={{
       position: 'fixed',
@@ -489,14 +389,6 @@ export function Videos() {
           video={editingVideo}
           onSave={handleEdit}
           onCancel={() => setEditingVideo(null)}
-        />
-      )}
-
-      {showUploadModal && (
-        <ConfirmationModal
-          message="Video subido exitosamente!"
-          onConfirm={() => setShowUploadModal(false)}
-          onCancel={() => setShowUploadModal(false)}
         />
       )}
     </div>
