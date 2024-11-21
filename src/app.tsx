@@ -62,6 +62,7 @@ const styles = `
   marign:0;
   padding:0;
   }
+  
   .app-container { min-height: 100vh; width:100vw; background-color: #f3f4f6; }
   
   .login-container { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1rem; }

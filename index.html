@@ -5,6 +5,73 @@
     <link rel="icon" type="image/svg+xml" href="/logo.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tickero - Promexbol</title>
+    <style>
+      /* RESET GENERAL */
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      /* Asegurarse de que el color de texto por defecto sea negro */
+      html, body {
+        color: #000; /* Texto negro por defecto */
+        background-color: #fff; /* Fondo blanco para el body */
+        font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+        line-height: 1.5;
+      }
+      
+      /* Reset de color de texto y fondo de inputs, textarea, y select */
+      input,
+      textarea,
+      select {
+        color: #000; /* Asegura que el texto dentro de los inputs sea negro */
+        background-color: #fff; /* Fondo blanco para los inputs */
+        border: 1px solid #ccc; /* Borde por defecto, puedes cambiarlo si lo deseas */
+        padding: 0.5em;
+        font-size: 1em;
+        border-radius: 4px;
+      }
+      
+      /* Eliminar contorno (outline) y borde en focus */
+      input:focus,
+      textarea:focus,
+      select:focus {
+        outline: none; /* Eliminar el contorno predeterminado del navegador */
+        border: 1px solid #ccc; /* Si deseas mantener el borde, puedes cambiar el color o estilo aquí */
+      }
+      
+      /* Eliminar borde de hover (cuando el mouse pasa por encima) */
+      input:hover,
+      textarea:hover,
+      select:hover,
+      button:hover {
+        border-color: #646cff; /* Cambia el color del borde en hover si lo prefieres */
+      }
+      
+      /* Estilos para los botones */
+      button {
+        background-color: #1a1a1a;
+        color: white;
+        border: 1px solid #ccc; /* Borde gris para el botón */
+        padding: 0.6em 1.2em;
+        font-size: 1em;
+        font-weight: 500;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      
+      button:focus {
+        outline: none; /* Eliminar el contorno cuando el botón es enfocado */
+        border: 1px solid #ccc; /* Cambiar el borde o eliminarlo si no lo quieres */
+      }
+      
+      button:hover {
+        border-color: #646cff; /* Cambiar el borde en hover */
+      }
+          </style>
   </head>
   <body>
     <div id="app"></div>

@@ -11,8 +11,8 @@ interface Ficha {
   codigo: string
   estado: EstadoFicha
   servicioId: string
-  empleadoId:string;
-  puntoAtencionId:string;
+  empleadoId: string
+  puntoAtencionId: string
 }
 
 interface Empleado {
@@ -85,10 +85,8 @@ const FichaDisplay: React.FC<FichaDisplayProps> = ({ ficha, titulo, servicio, ca
     <p className={estilos.fichaNumero}>{ficha ? ficha.codigo : '-'}</p>
     {ficha && servicio && (
       <div className="mt-2 text-sm text-gray-600">
-        {/* <p>Servicio: {servicio.nombre}</p> */}
         <p>Categoría: {categoria?.nombre}</p>
         {subcategoria && <p>Subcategoría: {subcategoria.nombre}</p>}
-        {/* <p>Tiempo estimado: {servicio.tiempoEstimado} min</p> */}
       </div>
     )}
   </div>
@@ -133,8 +131,14 @@ export const Caja: React.FC<CajaProps> = ({ handleLogout }) => {
   const [servicios, setServicios] = useState<Servicio[]>([])
 
   const intervalRef = useRef<number | null>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const prevFichasPendientesRef = useRef<Ficha[]>([])
 
   useEffect(() => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
+    }
+
     const initializeData = async () => {
       if (isAuthenticated) {
         const storedEmpleado = JSON.parse(localStorage.getItem('empleado') || 'null')
@@ -144,9 +148,7 @@ export const Caja: React.FC<CajaProps> = ({ handleLogout }) => {
           setEmpleado(storedEmpleado)
           setPuntoAtencion(storedPuntoAtencion)
           
-          // Verificar si hay un ticket en estado "llamando" para este punto de atención
-          await verificarTicketLlamando(storedPuntoAtencion.id)
-          
+          await verificarEstadoFichas(storedPuntoAtencion.id)
           await obtenerProximaFicha(storedPuntoAtencion.id)
           await obtenerFichasPendientes(storedPuntoAtencion.categoriaId)
           await obtenerCategorias()
@@ -172,23 +174,68 @@ export const Caja: React.FC<CajaProps> = ({ handleLogout }) => {
     }
   }, [isAuthenticated])
 
-  const verificarTicketLlamando = async (puntoAtencionId: string) => {
+  useEffect(() => {
+    if (fichasPendientes.length > prevFichasPendientesRef.current.length) {
+      playAlertSound()
+    }
+    prevFichasPendientesRef.current = fichasPendientes
+  }, [fichasPendientes])
+
+  const playAlertSound = () => {
+    if (audioContextRef.current) {
+      const audioContext = audioContextRef.current;
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.type = 'sine';
+      const now = audioContext.currentTime;
+
+      // Configuración de frecuencias para un sonido más suave
+      oscillator.frequency.setValueAtTime(440, now); // A4
+      oscillator.frequency.linearRampToValueAtTime(554.37, now + 0.1); // C#5
+      oscillator.frequency.linearRampToValueAtTime(659.25, now + 0.2); // E5
+
+      // Configuración de volumen para un sonido más sutil
+      gainNode.gain.setValueAtTime(0, now);
+      gainNode.gain.linearRampToValueAtTime(0.3, now + 0.05);
+      gainNode.gain.linearRampToValueAtTime(0, now + 0.4);
+
+      oscillator.start(now);
+      oscillator.stop(now + 0.4);
+    }
+  };
+
+  const verificarEstadoFichas = async (puntoAtencionId: string) => {
     try {
       const response = await apiCall<Ficha[]>('/api/ficha/recientes')
       if (Array.isArray(response)) {
         const ticketLlamando = response.find(ficha => 
           ficha.estado === 'Llamado' && ficha.puntoAtencionId === puntoAtencionId
         )
+        const ticketEnAtencion = response.find(ficha => 
+          ficha.estado === 'En_Atencion' && ficha.puntoAtencionId === puntoAtencionId
+        )
+        
         if (ticketLlamando) {
           setEstadoCola(prevEstado => ({
             ...prevEstado,
             actual: ticketLlamando,
-            estadoLlamada: 'llamando'
+            estadoLlamada: 'no_presente'
+          }))
+        } else if (ticketEnAtencion) {
+          setEstadoCola(prevEstado => ({
+            ...prevEstado,
+            enAtencion: ticketEnAtencion,
+            estaAtendiendo: true,
+            estadoLlamada: 'idle'
           }))
         }
       }
     } catch (error) {
-      console.error('Error al verificar ticket llamando:', error)
+      console.error('Error al verificar estado de fichas:', error)
     }
   }
 
@@ -372,7 +419,7 @@ export const Caja: React.FC<CajaProps> = ({ handleLogout }) => {
     if (!servicio) return { servicio: null, categoria: null, subcategoria: null }
     
     const categoria = categorias.find(c => c.id === servicio.categoriaId) || null
-    const subcategoria = subcategorias.find(sc  => sc.id === servicio.subCategoriaId) || null
+    const subcategoria = subcategorias.find(sc => sc.id === servicio.subCategoriaId) || null
     
     return { servicio, categoria, subcategoria }
   }
@@ -382,13 +429,12 @@ export const Caja: React.FC<CajaProps> = ({ handleLogout }) => {
       <div className={estilos.sidebar}>
         <h3 className="text-lg font-semibold mb-2 text-gray-700">Fichas Pendientes</h3>
         <ul className={estilos.fichasPendientesList}>
-          {[...Array(10)].map((_, index) => (
+          {fichasPendientes.map((ficha, index) => (
             <li key={index} className={estilos.fichaPendiente}>
-              {fichasPendientes[index] ? fichasPendientes[index].codigo : '-'}
+              {ficha.codigo}
             </li>
           ))}
         </ul>
-      
       </div>
       <div className={estilos.mainContent}>
         <header className={estilos.header}>
@@ -419,7 +465,7 @@ export const Caja: React.FC<CajaProps> = ({ handleLogout }) => {
           <div className={estilos.buttonContainer}>
             <button
               onClick={estadoCola.estadoLlamada === 'no_presente' ? marcarNoPresente : llamarFicha}
-              disabled={!estadoCola.siguiente || estadoCola.estaAtendiendo || estadoCola.estadoLlamada === 'llamando'}
+              disabled={(!estadoCola.siguiente && !estadoCola.actual) || estadoCola.estaAtendiendo || estadoCola.estadoLlamada === 'llamando'}
               className={`${estilos.button} ${estilos.buttonLlamar}`}
             >
               {estadoCola.estadoLlamada === 'llamando' ? (
@@ -469,7 +515,7 @@ export const Caja: React.FC<CajaProps> = ({ handleLogout }) => {
   )
 }
 
-// Updated Styles
+// Styles remain unchanged
 const estilos = {
   app: css`
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;

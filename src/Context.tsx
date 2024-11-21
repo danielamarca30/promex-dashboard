@@ -31,7 +31,7 @@ interface RefreshTokenResponse {
 
 const APIContext = createContext<APIContextType | null>(null);
 
-const BASE_URL = 'http://192.168.1.200:3000';
+const BASE_URL = 'http://192.168.50.200:3000';
 
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
