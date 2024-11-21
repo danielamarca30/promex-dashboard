@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite'
 import preact from '@preact/preset-vite'
 import path from 'path'
-
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [preact()],
@@ -25,4 +24,7 @@ export default defineConfig({
     port: 5173,
   },
   assetsInclude: ['**/*.png', '**/*.jpg', '**/*.jpeg', '**/*.gif', '**/*.svg'],
+  define: {
+    'process.env': process.env
+  }
 })
