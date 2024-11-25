@@ -34,6 +34,7 @@ const BASE_URL =import.meta.env.__API_URL__|| 'http://192.168.50.200:3000';
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
 });
+console.log('API: ',BASE_URL);
 
 export function APIProvider({ children }: { children: ComponentChildren }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));

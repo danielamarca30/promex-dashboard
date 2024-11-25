@@ -156,9 +156,9 @@ export function Main() {
     console.log('use effect',view,isAuthenticated);
     const checkAuthAndFetchData = async () => {
       if (isAuthenticated) {
-        // if (view === 'login') {
-        //   setView('dashboard');
-        // }
+        if (view === 'login') {
+          setView('dashboard');
+        }
         await fetchData();
       } else {
         setView('login');
