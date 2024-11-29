@@ -26,6 +26,8 @@ type Cotizacion = {
   fecha: string;
   active: boolean;
   usuarioId: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 // Signals
@@ -37,10 +39,6 @@ const mineralUnits = [
   "O.T.", // Onza Troy
   "L.F.", // Libra Fina
   "K.F.", // Kilogramo Fino
-  // "T.M.F.", // Tonelada Métrica Fina
-  // "T.C.S.", // Tonelada Corta Seca
-  // "T.L.S.", // Tonelada Larga Seca
-  // "T.M.S.", // Tonelada Métrica Seca
 ];
 
 // Styles
@@ -197,37 +195,50 @@ const ComunicadoForm: FunctionComponent<{
 };
 
 const CotizacionForm: FunctionComponent<{
-  onSubmit: (data: Omit<Cotizacion, 'id' | 'active' | 'usuarioId' | 'fecha'>) => void;
+  onSubmit: (data: Omit<Cotizacion, 'id' | 'active' | 'usuarioId' | 'createdAt' | 'updatedAt'>) => void;
   initialData?: Cotizacion;
   onCancel: () => void
 }> = ({ onSubmit, initialData, onCancel }) => {
-  const [formData, setFormData] = useState<Omit<Cotizacion, 'id' | 'active' | 'usuarioId' | 'fecha'>>(
-    initialData || { mineral: '', cotizacion: 0, unidad: '' }
+  const [formData, setFormData] = useState<Omit<Cotizacion, 'id' | 'active' | 'usuarioId' | 'createdAt' | 'updatedAt'>>(
+    initialData || { mineral: '', cotizacion: 0, unidad: '', fecha: '' }
   );
 
   useEffect(() => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(12, 0, 0, 0);
+    const yesterdayString = yesterday.toISOString().slice(0, 16);
+
     if (initialData) {
       setFormData({ 
         mineral: initialData.mineral.toUpperCase(), 
         cotizacion: initialData.cotizacion, 
-        unidad: initialData.unidad.toUpperCase() 
+        unidad: initialData.unidad.toUpperCase(),
+        fecha: initialData.fecha ? new Date(initialData.fecha).toISOString().slice(0, 16) : yesterdayString
       });
     } else {
-      setFormData({ mineral: '', cotizacion: 0, unidad: '' });
+      setFormData({ 
+        mineral: '', 
+        cotizacion: 0, 
+        unidad: '', 
+        fecha: yesterdayString
+      });
     }
   }, [initialData]);
 
   const handleSubmit = (e: Event) => {
     e.preventDefault();
-    const parsedCotizacion = parseFloat(formData.cotizacion.replace(',', '.'));
+    const parsedCotizacion = parseFloat(formData.cotizacion.toString().replace(',', '.'));
     if (isNaN(parsedCotizacion)) {
       alert('Por favor, ingrese un valor numérico válido para la cotización.');
       return;
     }
+    const dateObject = new Date(formData.fecha);
     onSubmit({
       mineral: formData.mineral.toUpperCase(),
       cotizacion: parsedCotizacion,
-      unidad: formData.unidad.toUpperCase()
+      unidad: formData.unidad.toUpperCase(),
+      fecha: dateObject.toISOString()
     });
   };
 
@@ -266,6 +277,13 @@ const CotizacionForm: FunctionComponent<{
           <option key={unit} value={unit}>{unit}</option>
         ))}
       </select>
+      <input
+        type="datetime-local"
+        value={formData.fecha}
+        onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
+        required
+        style={styles.input}
+      />
       <button type="submit" style={styles.button}>{initialData ? 'ACTUALIZAR' : 'AÑADIR'} COTIZACIÓN</button>
       <button type="button" onClick={onCancel} style={{...styles.button, backgroundColor: '#f44336'}}>CANCELAR</button>
     </form>
@@ -339,10 +357,10 @@ export function Cotizacion() {
     }
   };
 
-  const handleSubmitCotizacion = async (cotizacion: Omit<Cotizacion, 'id' | 'active' | 'usuarioId' | 'fecha'>) => {
+  const handleSubmitCotizacion = async (cotizacion: Omit<Cotizacion, 'id' | 'active' | 'usuarioId' | 'createdAt' | 'updatedAt'>) => {
     try {
       if (editingCotizacion) {
-        await apiCall(`/ext/cotizaciones/${editingCotizacion.id}`, 'PUT', { ...cotizacion, id: editingCotizacion.id, fecha: editingCotizacion.fecha });
+        await apiCall(`/ext/cotizaciones/${editingCotizacion.id}`, 'PUT', { ...cotizacion, id: editingCotizacion.id });
       } else {
         await apiCall(`/ext/cotizaciones`, 'POST', { ...cotizacion, usuarioId: 'user123' });
       }
@@ -389,7 +407,7 @@ export function Cotizacion() {
               <tr key={comunicado.id}>
                 <td style={styles.td}>{comunicado.comunicado.toUpperCase()}</td>
                 <td style={styles.td}>{comunicado.descripcion.toUpperCase()}</td>
-                <td  style={styles.td}>
+                <td style={styles.td}>
                   <button onClick={() => setEditingComunicado(comunicado)} style={styles.actionButton}>EDITAR</button>
                   <button onClick={() => setDeletingComunicado(comunicado)} style={{...styles.actionButton, ...styles.deleteButton}}>ELIMINAR</button>
                 </td>
@@ -420,9 +438,18 @@ export function Cotizacion() {
             {cotizaciones.value.map((cotizacion) => (
               <tr key={cotizacion.id}>
                 <td style={styles.td}>{cotizacion.mineral.toUpperCase()}</td>
-                <td style={styles.td}>{parseFloat(cotizacion.cotizacion.toString().replace(',', '.')).toFixed(2)}</td>
+                <td style={styles.td}>{parseFloat(cotizacion.cotizacion.toString()).toFixed(2)}</td>
                 <td style={styles.td}>{cotizacion.unidad.toUpperCase()}</td>
-                <td style={styles.td}>{new Date(cotizacion.fecha).toLocaleDateString()}</td>
+                <td style={styles.td}>
+                  {new Date(cotizacion.fecha).toLocaleString('es-ES', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: 'America/La_Paz'
+                  })}
+                </td>
                 <td style={styles.td}>
                   <button onClick={() => setEditingCotizacion(cotizacion)} style={styles.actionButton}>EDITAR</button>
                   <button onClick={() => setDeletingCotizacion(cotizacion)} style={{...styles.actionButton, ...styles.deleteButton}}>ELIMINAR</button>
@@ -451,3 +478,4 @@ export function Cotizacion() {
     </div>
   );
 }
+
